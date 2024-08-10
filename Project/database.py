@@ -7,7 +7,6 @@ def recreate_user_table():
 
     # Drop existing tables if they exist
     c.execute('DROP TABLE IF EXISTS users')
-    c.execute('DROP TABLE IF EXISTS user_predictions')
 
     # Create users table
     c.execute('''
@@ -20,16 +19,6 @@ def recreate_user_table():
     ''')
 
     # Create table for storing predictions
-    c.execute('''
-        CREATE TABLE user_predictions(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            NPI INTEGER,
-            DrugName TEXT,
-            prediction REAL,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
 
     # Commit changes and close the connection
     conn.commit()
