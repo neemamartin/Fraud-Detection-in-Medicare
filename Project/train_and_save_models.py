@@ -332,44 +332,22 @@ for clf in clfs:
 joblib.dump(clf, f'{clf_name}.joblib')
 joblib.dump(scaler, 'scaler.joblib')
 
-# encoder = LabelEncoder()
-# for feature in categorical_features:
-#     X[feature] = encoder.fit_transform(X[feature].astype(str))
+data_features1.to_csv('data_features1.csv', index=False)
 
-# Scale numerical features
-# scaler = StandardScaler()
-# X[numerical_features] = scaler.fit_transform(X[numerical_features])
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+import joblib
 
+# Define and fit scaler
+scaler = StandardScaler()
+X_train = df_train[numerical_features1].fillna(0).values
+X_train_scaled = scaler.fit_transform(X_train)
 
-# rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-# rf_model.fit(X_train, y_train)
+# Fit model
+clf = RandomForestClassifier( class_weight={0:1, 1:2514}, n_jobs=5)
+y_train = df_train['is_fraud'].values
+clf.fit(X_train_scaled, y_train)
 
-# # Train GradientBoostingClassifier
-# gb_model = GradientBoostingClassifier(n_estimators=100, random_state=42)
-# gb_model.fit(X_train, y_train)
-
-# # Save models and preprocessing tools
-# joblib.dump(rf_model, 'rf_model.joblib')
-# joblib.dump(gb_model, 'gb_model.joblib')
-# joblib.dump(X_valid_x, 'scaler.joblib')
-# # joblib.dump(encoder, 'encoder.joblib')
-
-# # Optionally save the feature dictionary if needed
-# feature_dict = {
-#     'categorical_features': categorical_features,
-#     'numerical_features': numerical_features
-# }
-# joblib.dump(feature_dict, 'feature_dict.joblib')
-
-# # Evaluate models (optional)
-# y_pred_rf = rf_model.predict(X_valid_x)
-# y_pred_gb = gb_model.predict(X_valid_x)
-
-# print("Random Forest Classifier")
-# print(classification_report(y_valid, y_pred_rf))
-# print("Accuracy:", accuracy_score(y_valid, y_pred_rf))
-
-# print("Gradient Boosting Classifier")
-# print(classification_report(y_valid, y_pred_gb))
-# print("Accuracy:", accuracy_score(y_valid, y_pred_gb))
-
+# Save model and scaler
+joblib.dump(clf, 'random_forest.joblib')
+joblib.dump(scaler, 'scaler1.joblib')
