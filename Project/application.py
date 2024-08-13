@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,8 +7,8 @@ import joblib
 import sqlite3
 import bcrypt
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-import re
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 # Load the pre-trained models and scaler
 model = joblib.load('random_forest.joblib')
@@ -43,10 +45,6 @@ def predict_fraud(npi, drug_name):
     # Ensure the input has the same feature set as used during training
     df_input = df_input.reindex(columns=feature_columns, fill_value=0)
     
-    # # Debug: Print the input data for inspection
-    # st.write("Input Data for Prediction:")
-    # st.write(df_input)
-
     # Extract features for prediction
     X_input = df_input[feature_columns].values
     
@@ -57,16 +55,8 @@ def predict_fraud(npi, drug_name):
     # Scale the input data
     X_input_scaled = scaler.transform(X_input)
     
-    # # Debug: Print the scaled input data for inspection
-    # st.write("Scaled Input Data:")
-    # st.write(X_input_scaled)
-    
     # Predict using the loaded model
     prediction = model.predict_proba(X_input_scaled)[:, 1]
-    
-    # Debug: Print the prediction probability
-    st.write("Prediction Probability:")
-    st.write(prediction[0])
     
     return prediction[0]
 
@@ -250,7 +240,7 @@ def signin():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Home page function
+# Home function with visualizations and user guidance
 def home():
     st.markdown(
         """
@@ -293,15 +283,78 @@ def home():
 
     npi = st.text_input('NPI', key='npi')
     drug_name = st.text_input('Drug Name', key='drug_name')
+    threshold = 50  # Fixed threshold at 50%
 
     if st.button('Predict Fraud', key='predict_btn'):
         if npi and drug_name:
             try:
                 prediction = predict_fraud(npi, drug_name)
-                if prediction > 0.5:
-                    st.success(f'The model predicts a high likelihood of fraud ({prediction:.2f}).')
+                
+                # Adjust threshold from percentage
+                threshold_adjusted = threshold / 100.0
+                
+                fraud_percent = prediction * 100
+                
+                # Donut Pie Chart
+                st.subheader("Fraud Prediction Probability")
+                fig, ax = plt.subplots(figsize=(6, 6))
+                labels = ['Fraud', 'Non-Fraud']
+                sizes = [fraud_percent, 100 - fraud_percent]
+                colors = ['#FF6347', '#20B2AA']
+                ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, wedgeprops=dict(width=0.3))
+                ax.set_title('Fraud Prediction Probability', fontsize=16)
+                st.pyplot(fig)
+
+                # Bar Plot
+                st.subheader("Fraud Probability vs Threshold")
+                fig, ax = plt.subplots(figsize=(6, 4))
+                ax.bar(['Prediction', 'Threshold'], [fraud_percent, threshold], color=['#FF6347', '#20B2AA'])
+                ax.set_ylim(0, 100)
+                ax.set_ylabel('Percentage (%)')
+                ax.set_title('Fraud Probability vs Threshold')
+                st.pyplot(fig)
+
+                # Gauge Plot
+                st.subheader("Fraud Severity Gauge")
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=fraud_percent,
+                    title={'text': "Fraud Probability"},
+                    gauge={'axis': {'range': [0, 100]},
+                           'bar': {'color': "#FF6347"},
+                           'steps': [
+                               {'range': [0, 50], 'color': "#20B2AA"},
+                               {'range': [50, 100], 'color': "#FF6347"}],
+                           'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': threshold}}))
+                fig.update_layout(height=400)
+                st.plotly_chart(fig)
+
+                # Additional Plot: Distribution of Prediction
+                st.subheader("Prediction Distribution")
+                fig, ax = plt.subplots(figsize=(6, 4))
+                ax.hist([fraud_percent], bins=[0, 25, 50, 75, 100], edgecolor='black', color='#FF6347', alpha=0.7)
+                ax.set_xlabel('Fraud Probability Range (%)')
+                ax.set_ylabel('Frequency')
+                ax.set_title('Fraud Probability Distribution')
+                st.pyplot(fig)
+
+                # Detailed Metrics
+                st.subheader("Detailed Prediction Metrics")
+                metrics = {
+                    "Predicted Fraud Probability (%)": f"{fraud_percent:.2f}",
+                    "Threshold (%)": f"{threshold:.2f}",
+                    "Fraud Likelihood": "High" if prediction > threshold_adjusted else "Low"
+                }
+                st.table(pd.DataFrame(metrics.items(), columns=["Metric", "Value"]))
+
+                # User Guidance
+                if prediction > threshold_adjusted:
+                    st.warning(f"The model predicts a high likelihood of fraud ({fraud_percent:.2f}%).")
+                    st.info("The prediction exceeds the threshold of 50%, indicating potential fraudulent activity. It is advised to reconsider using this drug, as the drug dealer has shown fraudulent activity in the past.")
                 else:
-                    st.success(f'The model predicts a low likelihood of fraud ({prediction:.2f}).')
+                    st.success(f"The model predicts a low likelihood of fraud ({fraud_percent:.2f}%).")
+                    st.info("The prediction is below the threshold of 50%, suggesting that the drug dealer has not shown significant fraudulent behavior. You are good to proceed with this drug.")
+
             except ValueError as e:
                 st.error(f'Error: {e}')
         else:
